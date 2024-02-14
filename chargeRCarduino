@@ -1,0 +1,38 @@
+//--------------------définition des variables et ports--------------------
+
+#define analogPin 0
+#define chargePin 12
+unsigned long t0;
+unsigned long t;
+
+//--------------------initialisation---------------------------------------
+
+void setup() {
+  pinMode(chargePin, OUTPUT);
+  digitalWrite(chargePin, LOW);
+  Serial.begin(9600);
+}
+
+//--------------------acquisition------------------------------------------
+
+void loop() {
+  delay (10000);                                            // délai 10s
+  digitalWrite(chargePin, HIGH);                            // début de la charge
+  t0 = micros();                                            // initialisation du temps
+  Serial.println("Temps (micro seconde) / Tension (volt)"); 
+  
+  while (true) {                                            // boucle de mesure et affichage du temps et tension tant que U < 4.98 V
+    int valeurLue = analogRead(analogPin);                  // lecture analogique de tension valeurs entre 0 et 1023 
+    float tension = valeurLue * (5.0 / 1023.0);             // conversion en volts
+    t = micros() - t0;                                      // prise du temps
+    Serial.print(t);                                        // écriture des données
+    Serial.print(" ");
+    Serial.println(tension);
+                                                            
+    if (tension >= 4.97) {                                  // détection de la fin de charge
+      Serial.println("Fin de la charge.");
+      digitalWrite(chargePin, LOW);                         // arrêt de la charge
+      break;
+    }
+  }
+}
