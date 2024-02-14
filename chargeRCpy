@@ -1,0 +1,97 @@
+#----------importation librairie-----------------------------------------
+import serial
+
+#----------définir le port série et la vitesse de communication----------
+port = 'COM7'                                   # penser à remplacer par le numéro du port série
+vcom = 9600
+
+#----------ouverture de la connexion série-------------------------------
+ser = serial.Serial(port, vcom)
+
+#----------ouverture d'un fichier et écriture----------------------------
+nom_fichier = 'donnees charge.txt'
+with open(nom_fichier, 'w') as file:
+    while True:                                 # écriture des données dans le fichier tant que la charge n'est pas finie
+        line = ser.readline().decode('utf-8')
+        if line.strip() == 'Fin de la charge.':
+            break
+        #print(line, end='')                    # au besoin, affichage sur la console pour vérifier
+        file.write(line)
+        
+#----------fermeture de la connexion série-------------------------------
+ser.close()
+
+#----------importation des librairies------------------------------------
+import numpy as np
+import matplotlib.pyplot as plt
+from pylab import *
+import matplotlib
+import os
+
+#-----------destination du fichier---------------------------------------
+os.chdir('/Users/flori/Desktop') 
+
+#-----------lecture du fichier données expérimentales--------------------
+temps_exp = []                                   # définition des tableaux de temps et de tension expérimentaux
+u_exp = []
+
+with open('donnees charge.txt', 'r') as fichier:
+    lignes = fichier.readlines()
+    for ligne in lignes:
+        valeurs = ligne.strip().split()          # divise chaque ligne en fonction des espaces
+        
+        if len(valeurs) == 2:                    # récupére les deux valeurs et les ajoute à la liste A, ne prend pas en compte les lignes vides
+            temps_exp.append(float(valeurs[0]))
+            u_exp.append(float(valeurs[1]))
+            
+temps_exp = [value / 1000000 for value in temps_exp] # conversion du temps en seconde
+
+#----------partie modélisation par la méthode d'euler---------------------
+ttot = max (temps_exp)                          # récuparation du temps final expérimental
+N = 1000                                        # nombre de valeur de temps
+temps_theo = []                                 # définition des tableaux de temps et de tension théoriques
+u_theo = []
+U0 = 0                                          # tension initiale
+R = 10000                                       # résistance en ohm
+C = 0.0001                                      # capacité du condensateur 
+E = 5                                           # tension imposé par la carte arduino
+
+def euler (ttot, U0, R, C, E, N):               # fonction utilisant la méthode d'euler pour résoudre l'équation différentielle
+    dt = ttot/(N-1)
+    t =[0]
+    U = [U0]
+    E = E
+    tau = R*C
+    for i in range (N-1):
+        U.append(U[i]+dt*((E/tau)-(U[i]/tau)))
+        t.append(t[i]+dt)
+    return t, U
+
+temps_theo, u_theo = euler (ttot, U0, R, C, E, N) #on récupère la modélisation dans les tableaux temps et tension théoriques
+#cette partie du code pourrait être demandée aux élèves en guidant la démarche, potentiellement avec une différentiation avec jupyter
+
+#----------recherche de tau expérimental-----------------------------------
+def recherche_tau_exp (u_exp, E):               # création d'une fonction pour scanner les valeurs de u_exp 
+    for i in range(len(u_exp)):                     
+        if u_exp[i] > E*0.63:                   # pour la première valeur supérieure à 0.63E on récupère l'indice i
+            return (i)
+    return None
+tau_exp = temps_exp[recherche_tau_exp (u_exp, E)] # tau prend alors la valeur de temps correspondant à l'indice
+tau_theo = R*C
+#----------figure pour comparer théorique et expérimental------------------
+plt.figure
+plt.grid(True)
+plt.title("Charge d'un condensateur")
+plt.plot(temps_theo,u_theo, 'r--', label = 'u_theo')
+plt.plot(temps_exp,u_exp, 'b--', label = 'u_exp')
+plt.xlabel('Temps (s)')
+plt.ylabel('Tension (V)')
+texte = 'Conditions :\nrésistance = {} ohms\ncapacité = {} farads'.format(R, C)
+plt.text(3, 3, texte,
+        bbox={'facecolor': 'grey', 'alpha': 0.4, 'pad': 8})
+plt.text(3, 2, f'tau_theo = {tau_theo}', style='italic',
+        bbox={'facecolor': 'red', 'alpha': 0.4, 'pad': 8})
+plt.text(3, 1, f'tau_exp = {tau_exp}', style='italic',
+        bbox={'facecolor': 'blue', 'alpha': 0.4, 'pad': 8})
+plt.legend()
+plt.show()
