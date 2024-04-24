@@ -21,7 +21,7 @@ void setup() {
    pinMode(PinLED, OUTPUT);         // Définition pin connecté à la LED
    pinMode(PinPhotoDiode, INPUT);   // Définition pin connecté à la photodiode
    
-   T0 = millis ();                  // Définit le temps initial
+   t0 = millis ();                  // Définit le temps initial
    TempsAffichageSuivant = millis() + TempsEntreAffichage; // On commence d'incrémenter la variable d'affichage
 }
 //--------------------------------------------------------------------------------------------
