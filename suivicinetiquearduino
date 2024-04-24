@@ -1,0 +1,65 @@
+int PinLED = 8;                    // ***** à commenter = Numéro du pin Alimentation de la LED
+int PinPhotoDiode = A0;            // ***** à commenter = Numéro du pin signal photodiode
+
+float Son;                         // ***** à commenter = Signal proportionnel à l'intensité reçue LED allumée
+float Soff;                        // ***** à commenter = Signal proportionnel à l'intensité reçue LED éteinte (fond parasite)
+int Tstab = 50;                    // temps d'attente pour stabilisation de la LED entre état allumé et eteint
+float Smesure;                     // Smesure = Son-Soff pour s'affranchir du fond parasite
+
+float S0 = 500.0;                  // Signal blanc, valeur intiale arbitraire
+float alpha = 0.05;                // Pour calculer la moyenne exponentielle
+
+unsigned long t0;                  // Variable de temps initial
+unsigned long t;                   // Variable de temps
+
+int TempsEntreAffichage = 5000;    // ***** à commenter = Délai entre deux prises de point
+float TempsAffichageSuivant;       // Variable gestion du délai entre affichage
+
+//--------------------------------------------------------------------------------------------
+void setup() {
+   Serial.begin(9600);              // Communication avec le moniteur série
+   pinMode(PinLED, OUTPUT);         // Définition pin connecté à la LED
+   pinMode(PinPhotoDiode, INPUT);   // Définition pin connecté à la photodiode
+   
+   T0 = millis ();                  // Définit le temps initial
+   TempsAffichageSuivant = millis() + TempsEntreAffichage; // On commence d'incrémenter la variable d'affichage
+}
+//--------------------------------------------------------------------------------------------
+void loop() {
+
+   while (true) {                                  // Tourne en boucle  
+
+   digitalWrite(PinLED, HIGH); delay(Tstab);       // ***** à commenter = On allume la led et on stabilise 50 ms 
+   Son = analogRead(PinPhotoDiode);                // ***** à commenter = Mesure intensité lumineuse
+
+   digitalWrite(PinLED, LOW); delay(Tstab);        // ***** à commenter = On etteint la led et on stabilise 50 ms
+   Soff = analogRead(PinPhotoDiode);               // ***** à commenter = Mesure intensité lumineuse
+
+   t = millis() - t0;                              // ***** à commenter = Le temps prend la nouvelle valeur du chronomètre - le temps initial
+
+   Smesure = alpha * (Son-Soff) + (1 - alpha) * Smesure; // Nouvelle valeur mesurée en utilisant une moyenne glissante
+      if (t > TempsAffichageSuivant ) {            // Test pour affichage
+        Serial.print(t);Serial.print(" ");         // ***** à commenter = Affiche le temps puis insère un espace
+        Serial.println(*****, 3);                  // Affiche l'absorbance, à remplir = log10(S0 / Smesure)
+
+        if (Serial.available()) {                  // Teste si un caractère arrive du terminal
+          String init = Serial.readString();       // Lecture du caractère
+          init.trim();                             // Retire les espaces à la fin de la chaîne de caractères     
+            if (init == "0") {                     // Teste si le caractère est 0
+            Serial.println("Mémorisation de la valeur de S0 "); // Communication avec l'utilisateur pour indiquer prise en compte du blanc
+            S0 = Smesure;                          // ***** à commenter = Le blanc prend la valeur de l'intensité mesurée
+            delay (20000);                         // ***** à commenter = On laisse 20s à l'expérimentateur pour changer de cuve
+            t0 = millis();                         // ***** à commenter = On redéfini le tempe initial
+            TempsAffichageSuivant = 0;             // Recalculer le prochain affichage
+         } 
+         if (init == "1") {                        // Teste si le caractère est 1
+            Serial.println("Fin du suivi");        // Affiche fin du suivi  
+            delay (1000000);                       // Laisse un délai de 1000s pour copier les valeurs 
+            break;
+         }
+        } // Fin du test arrivée d'un caractère
+        TempsAffichageSuivant = TempsAffichageSuivant + TempsEntreAffichage; // Incrémentation pour le temps d'affichage suivant
+      } // Fin du test affichage
+  }
+}
+
